@@ -19,4 +19,10 @@ public class Department {
 
     @OneToMany(mappedBy = "dept")
     List<Employee> employees = new ArrayList<>();
+
+    public Department(){}
+
+    public Department(String deptName){
+        this.deptName = deptName;
+    }
 }

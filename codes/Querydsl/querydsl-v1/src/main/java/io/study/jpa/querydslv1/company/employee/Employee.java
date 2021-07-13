@@ -17,8 +17,18 @@ public class Employee {
     @Column(name = "EMPLOYEE_NAME")
     private String name;
 
+    @Column(name = "EMPLOYEE_AGE")
+    private Long age;
+
     @ManyToOne
     @JoinColumn(name = "DEPT_ID")
     private Department dept;
 
+    public Employee(){}
+
+    public Employee(String name, Department dept, Long age){
+        this.name = name;
+        this.dept = dept;
+        this.age = age;
+    }
 }
