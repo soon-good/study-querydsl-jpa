@@ -569,3 +569,225 @@ public void concat(){
 }
 ```
 
+<br>
+
+## 서브쿼리
+
+서브쿼리를 사용할 때는  `JPAExpressions` 클래스를 사용해서 내부에서 쿼리문을 전달해준다. 서브쿼리에 대한 자세한 내용은 예제로 정리하면 될 것 같다.<br>
+
+### 예제 1) 나이가 가장 많은 사원의 정보를 출력해보기
+
+```java
+@Test
+@DisplayName("나이가_가장_많은_사람을_출력해보기")
+void 나이가_가장_많은_사람을_출력해보기(){
+  QEmployee empSub = new QEmployee("employeeSub");
+
+  List<Employee> result = queryFactory.selectFrom(employee)
+    .where(employee.age.eq(
+      JPAExpressions
+      .select(empSub.age.max())
+      .from(empSub)
+    ))
+    .fetch();
+
+  System.out.println(result);
+
+  assertThat(result)
+    .extracting("age")
+    .containsExactly(41);
+}
+```
+
+<br>
+
+**SQL 출력결과**
+
+```sql
+Hibernate: 
+    /* select
+        employee 
+    from
+        Employee employee 
+    where
+        employee.age = (
+            select
+                max(employeeSub.age) 
+            from
+                Employee employeeSub
+        ) */ select
+            employee0_.employee_id as employee1_1_,
+            employee0_.employee_age as employee2_1_,
+            employee0_.dept_id as dept_id4_1_,
+            employee0_.employee_name as employee3_1_ 
+        from
+            public.emp employee0_ 
+        where
+            employee0_.employee_age=(
+                select
+                    max(employee1_.employee_age) 
+                from
+                    public.emp employee1_
+            )
+[Employee(id=7, name=소방관2, age=41, dept=io.study.jpa.querydslv1.company.department.Department@5f5ec9a8)]
+```
+
+<br>
+
+### 예제 2) 나이가 전 사원들의 평균 나이 이상인 회원들을 조회하기
+
+```java
+@Test
+@DisplayName("나이가_평균_이상인_회원")
+public void 나이가_평균_이상인_회원(){
+  QEmployee empSub = new QEmployee("employeeSub");
+
+  List<Employee> result = queryFactory.selectFrom(employee)
+    .where(employee.age.goe(
+      JPAExpressions
+      .select(empSub.age.avg())
+      .from(empSub)
+    ))
+    .fetch();
+
+  result.forEach(System.out::println);
+
+  assertThat(result)
+    .extracting("age")
+    .containsExactly(40L,41L);
+}
+```
+
+<br>
+
+**SQL 생성결과**
+
+```sql
+Hibernate: 
+    /* select
+        employee 
+    from
+        Employee employee 
+    where
+        employee.age >= (
+            select
+                avg(employeeSub.age) 
+            from
+                Employee employeeSub
+        ) */ select
+            employee0_.employee_id as employee1_1_,
+            employee0_.employee_age as employee2_1_,
+            employee0_.dept_id as dept_id4_1_,
+            employee0_.employee_name as employee3_1_ 
+        from
+            public.emp employee0_ 
+        where
+            employee0_.employee_age>=(
+                select
+                    avg(cast(employee1_.employee_age as double)) 
+                from
+                    public.emp employee1_
+            )
+Employee(id=6, name=소방관1, age=40, dept=io.study.jpa.querydslv1.company.department.Department@37dc8506)
+Employee(id=7, name=소방관2, age=41, dept=io.study.jpa.querydslv1.company.department.Department@37dc8506)
+```
+
+<br>
+
+### 예제 3) in절 내에서 서브쿼리 사용해보기
+
+```java
+@Test
+@DisplayName("In절_사용해보기")
+public void In절_사용해보기(){
+  QEmployee empSub = new QEmployee("employeeSub");
+
+  List<Employee> result = queryFactory.selectFrom(employee)
+    .where(employee.age.in(
+      JPAExpressions
+      .select(empSub.age)
+      .from(empSub)
+      .where(empSub.age.lt(30L))
+    ))
+    .fetch();
+
+  result.forEach(System.out::println);
+
+  assertThat(result)
+    .extracting("name")
+    .containsExactly("황의조","권창훈");
+}
+```
+
+<br>
+
+SQL 출력결과
+
+```sql
+Hibernate: 
+    /* select
+        employee 
+    from
+        Employee employee 
+    where
+        employee.age in (
+            select
+                employeeSub.age 
+            from
+                Employee employeeSub 
+            where
+                employeeSub.age < ?1
+        ) */ select
+            employee0_.employee_id as employee1_1_,
+            employee0_.employee_age as employee2_1_,
+            employee0_.dept_id as dept_id4_1_,
+            employee0_.employee_name as employee3_1_ 
+        from
+            public.emp employee0_ 
+        where
+            employee0_.employee_age in (
+                select
+                    employee1_.employee_age 
+                from
+                    public.emp employee1_ 
+                where
+                    employee1_.employee_age<?
+            )
+Employee(id=8, name=황의조, age=29, dept=io.study.jpa.querydslv1.company.department.Department@875d0db)
+Employee(id=10, name=권창훈, age=27, dept=io.study.jpa.querydslv1.company.department.Department@875d0db)
+```
+
+<br>
+
+## static import
+
+지금까지 모든 서브쿼리에서 아래와 같은 구문을 사용했다. 아래와 같은 `JPAExpressions` 를 사용하는 구문은  static import 를 한다면 조금 더 코드를 간결하게 정리할 수 있다.
+
+```java
+JPAExpressions
+    .select(empSub.age)
+    .from(empSub)
+    .where(empSub.age.lt(30L))
+```
+
+
+
+## from 절에서 서브쿼리 미지원
+
+JPA 의  JPQL에서도 from 절에서 서브쿼리를 사용하지 못한다. 이런 이유로 QueryDsl 역시 from 절 내부에 서브쿼리를 사용하지 못한다. from 절에 서브쿼리를 사용하는 것은 보통 인라인 뷰라고 부르는 경우가 많다. 이렇게 인라인 뷰를 사용하는 것은 성능상에 좋지 못하며, 추천되는 방식은 아니다.<br>
+
+이렇게 서브쿼리를 인라인 뷰에 사용하게 되는 인라인 뷰를 사용해야 할 경우 아래와 같은 우회방식들을 고려해볼 수 있다.
+
+- 서브쿼리를  join 으로 변경한다.
+- JdbcTemplate 을 사용한다. (정말 좋은 도구!!!이다.)
+- 애플리케이션에서 쿼리를 2번 분리해서 실행한다.
+
+<br>
+
+## 참고하면 좋은 책
+
+- SQL Anti Patterns
+  - [http://www.yes24.com/Product/Goods/5269099](http://www.yes24.com/Product/Goods/5269099)
+
+<br>
+
