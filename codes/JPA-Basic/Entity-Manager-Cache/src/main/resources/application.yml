@@ -1,0 +1,54 @@
+spring:
+  profiles:
+    active: test-postgresql
+---
+spring:
+  config:
+    activate:
+      on-profile: test-postgresql
+  datasource:
+    url: jdbc:postgresql://localhost:35432/postgres
+    username: postgres
+    password: 1111
+    driver-class-name: org.postgresql.Driver
+  #    initialization-mode: always
+  #    schema: classpath*:database/testdocker/schema.sql
+#    data: classpath*:database/testdocker/data.sql
+#    hikari:
+#      schema: classpath*:database/testdocker/schema.sql
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+        use_sql_comments: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+---
+spring:
+  config:
+    activate:
+      on-profile: h2-test
+  datasource:
+    url: jdbc:h2:tcp://localhost/~/h2testdb
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+---
+spring:
+  config:
+    activate:
+      on-profile: test-mysql
+  datasource:
+    url: jdbc:mysql://localhost:39907/codingtest
+    username: testuser
+    password: 1111
+    driver-class-name: com.mysql.cj.jdbc.Driver
