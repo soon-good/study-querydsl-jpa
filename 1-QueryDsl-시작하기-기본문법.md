@@ -1,8 +1,8 @@
 # QueryDsl 시작하기
 
-베이스로 참고한 자료는 [실전! Querydsl](https://www.inflearn.com/course/Querydsl-%EC%8B%A4%EC%A0%84/dashboard) 의 **섹션 3. 기본문법** 입니다. 이것 저것 설명을 많이 붙일까 하다가 요약 위주로 정리합니다<br>
-
-자세한 설명은 강의를 보셔야 제대로 이해하실 수 있습니다. <br>
+> **혹시라도 이 글을 보실 블특정 다수 익명의 사용자분들께.**<br>
+>
+> 베이스로 참고한 자료는 [실전! Querydsl](https://www.inflearn.com/course/Querydsl-실전/dashboard) 의 **섹션 3. 기본문법** 입니다. 이것 저것 설명을 많이 붙일까 하다가 요약 위주로 정리합니다. 자세한 설명은 강의를 보셔야 제대로 이해하실 수 있습니다. 
 
 <br>
 
