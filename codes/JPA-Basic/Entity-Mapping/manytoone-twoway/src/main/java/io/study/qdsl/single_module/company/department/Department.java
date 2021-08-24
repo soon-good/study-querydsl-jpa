@@ -1,11 +1,13 @@
 package io.study.qdsl.single_module.company.department;
 
 import io.study.qdsl.single_module.company.employee.Employee;
+import lombok.Getter;
 
 import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
 @Entity
 @Table(name = "DEPT", schema = "public")
 public class Department {
@@ -19,4 +21,6 @@ public class Department {
 
     @OneToMany(mappedBy = "dept")
     List<Employee> employees = new ArrayList<>();
+
+    public Department(){}
 }
