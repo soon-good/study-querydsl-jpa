@@ -1,11 +1,13 @@
 package io.study.qdsl.single_module.company.employee;
 
 import io.study.qdsl.single_module.company.department.Department;
+import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 
 import javax.persistence.*;
 
-@Data
+@Getter
 @Entity
 @Table(name = "EMP", schema = "public")
 public class Employee {
@@ -21,4 +23,21 @@ public class Employee {
     @JoinColumn(name = "DEPT_ID")
     private Department dept;
 
+    public Employee(){}
+
+    @Builder
+    public Employee(Long id, String name, Department department){
+        this.id = id;
+        this.name = name;
+        this.dept = department;
+    }
+
+    public void setDept(Department dept){
+        this.dept = dept;
+    }
+
+    public void assignDept(Department dept){
+        this.dept = dept;
+        dept.getEmployees().add(this);
+    }
 }
