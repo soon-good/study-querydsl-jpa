@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: h2-test
+    active: test-postgresql
 ---
 spring:
   config:
@@ -23,7 +23,7 @@ spring:
           use_sql_comments: true
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: create
 ---
 spring:
   config:

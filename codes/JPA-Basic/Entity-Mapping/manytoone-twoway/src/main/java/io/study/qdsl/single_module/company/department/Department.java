@@ -1,6 +1,7 @@
 package io.study.qdsl.single_module.company.department;
 
 import io.study.qdsl.single_module.company.employee.Employee;
+import lombok.Builder;
 import lombok.Getter;
 
 import javax.persistence.*;
@@ -20,7 +21,13 @@ public class Department {
     private String deptName;
 
     @OneToMany(mappedBy = "dept")
-    List<Employee> employees = new ArrayList<>();
+    private final List<Employee> employees = new ArrayList<>();
 
     public Department(){}
+
+    @Builder
+    public Department(Long id, String deptName){
+        this.id = id;
+        this.deptName = deptName;
+    }
 }
