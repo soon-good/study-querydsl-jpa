@@ -104,4 +104,46 @@ public class ManyToOneTwoWayTest {
 		System.out.println("영화배우 직원들의 수 :: " + deptActor.getEmployees().size() + " 명");
 		System.out.println("축구선수 직원들의 수 :: " + deptSoccer.getEmployees().size() + " 명");
 	}
+
+	@Rollback(false)
+	@Test
+	@DisplayName("연관관계_편의메서드를_사용하는_경우")
+	void 연관관계_편의메서드를_사용하는_경우(){
+		Department deptSoccer = Department.builder().deptName("축구선수").build();
+		Department deptActor = Department.builder().deptName("영화배우").build();
+
+		em.persist(deptSoccer); em.persist(deptActor);
+
+		Employee son = Employee.builder()
+			.name("손흥민")
+			.department(deptSoccer)
+			.build();
+		son.assignDept(deptSoccer);
+
+		Employee hwang = Employee.builder()
+			.name("황의조")
+			.department(deptSoccer)
+			.build();
+		hwang.assignDept(deptSoccer);
+
+		Employee ju = Employee.builder()
+			.name("주성치")
+			.department(deptActor)
+			.build();
+		ju.assignDept(deptActor);
+
+		Employee kang = Employee.builder()
+			.name("강동원")
+			.department(deptActor)
+			.build();
+		kang.assignDept(deptActor);
+
+		em.persist(deptSoccer);
+		em.persist(deptActor);
+		em.persist(son);em.persist(hwang);em.persist(ju);em.persist(kang);
+		em.flush();
+
+		System.out.println("영화배우 직원들의 수 :: " + deptActor.getEmployees().size() + " 명");
+		System.out.println("축구선수 직원들의 수 :: " + deptSoccer.getEmployees().size() + " 명");
+	}
 }
