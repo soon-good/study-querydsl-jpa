@@ -30,6 +30,8 @@ public class QEmployee extends EntityPathBase<Employee> {
 
     public final StringPath name = createString("name");
 
+    public final NumberPath<Double> salary = createNumber("salary", Double.class);
+
     public QEmployee(String variable) {
         this(Employee.class, forVariable(variable), INITS);
     }

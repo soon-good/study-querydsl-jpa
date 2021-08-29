@@ -1,11 +1,14 @@
 package io.study.jpa.querydslv1.company.department;
 
 import io.study.jpa.querydslv1.company.employee.Employee;
+import lombok.Builder;
+import lombok.Getter;
 
 import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
 @Entity
 @Table(name = "DEPT", schema = "public")
 public class Department {
@@ -22,6 +25,7 @@ public class Department {
 
     public Department(){}
 
+    @Builder
     public Department(String deptName){
         this.deptName = deptName;
     }

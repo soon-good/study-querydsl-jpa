@@ -1,15 +1,16 @@
 spring:
   profiles:
-    active: h2-test
+    active: test-postgresql
 ---
 spring:
   config:
     activate:
       on-profile: test-postgresql
   datasource:
-    url: jdbc:postgresql://localhost:15432/postgres
+    url: jdbc:postgresql://localhost:35432/postgres
     username: postgres
     password: 1111
+    driver-class-name: org.postgresql.Driver
 #    initialization-mode: always
   #    schema: classpath*:database/testdocker/schema.sql
 #    data: classpath*:database/testdocker/data.sql
@@ -23,7 +24,7 @@ spring:
           use_sql_comments: true
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: create
 ---
 spring:
   config:
