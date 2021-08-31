@@ -20,8 +20,8 @@ public class Department {
     @Column(name = "DEPT_NAME")
     private String deptName;
 
-    @OneToMany(mappedBy = "dept")
-    private final List<Employee> employees = new ArrayList<>();
+    @OneToMany(mappedBy = "dept", cascade = CascadeType.PERSIST)
+    private List<Employee> employees = new ArrayList<>();
 
     public Department(){}
 
