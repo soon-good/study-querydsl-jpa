@@ -20,7 +20,7 @@ public class Department {
     @Column(name = "DEPT_NAME")
     private String deptName;
 
-    @OneToMany(mappedBy = "dept", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
+    @OneToMany(mappedBy = "dept", fetch = FetchType.LAZY)
     private final List<Employee> employees = new ArrayList<>();
 
     public Department(){}

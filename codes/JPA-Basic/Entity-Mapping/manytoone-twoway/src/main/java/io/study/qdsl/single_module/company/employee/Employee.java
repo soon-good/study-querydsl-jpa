@@ -19,7 +19,7 @@ public class Employee {
     @Column(name = "EMPLOYEE_NAME")
     private String name;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "DEPT_ID")
     private Department dept;
 

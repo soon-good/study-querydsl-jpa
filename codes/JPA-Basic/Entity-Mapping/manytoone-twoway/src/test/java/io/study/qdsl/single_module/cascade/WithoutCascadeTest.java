@@ -2,6 +2,7 @@ package io.study.qdsl.single_module.cascade;
 
 import javax.persistence.EntityManager;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.study.qdsl.single_module.company.department.Department;
 import io.study.qdsl.single_module.company.employee.Employee;
 
+@Disabled
 @SpringBootTest
 @Transactional
 public class WithoutCascadeTest {
@@ -17,6 +19,7 @@ public class WithoutCascadeTest {
 	@Autowired
 	EntityManager em;
 
+	@Disabled
 	@Transactional
 	@Test
 	void 테스트_NEW_상태의_객체를_PERSIST_할경우(){
