@@ -1,0 +1,22 @@
+spring:
+  config:
+    activate:
+      on-profile:
+        - test-docker
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: 1111
+    jdbcUrl: jdbc:postgresql://localhost:15432/postgres?characterEncoding=UTF-8&allowMultiQueries=true&connectTimeout=5000&socketTimeout=10000&rewriteBatchedInserts=true
+    hikari:
+      data-source-class-name: org.postgresql.Driver
+      jdbc-url: jdbc:postgresql://localhost:15432/postgres?characterEncoding=UTF-8&allowMultiQueries=true&connectTimeout=5000&socketTimeout=10000&rewriteBatchedInserts=true
+      username: postgres
+      password: 1111
+  sql:
+    init:
+      schema-locations:
+        - classpath:docker/sql/schema.sql
+      mode: always
+
+

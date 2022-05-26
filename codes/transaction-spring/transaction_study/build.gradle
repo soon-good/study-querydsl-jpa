@@ -24,7 +24,12 @@ dependencies {
 	runtimeOnly 'com.h2database:h2'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	// https://mvnrepository.com/artifact/org.testcontainers/testcontainers
+	// https://mvnrepository.com/artifact/org.testcontainers/testcontainers
+	testImplementation 'org.testcontainers:testcontainers:1.16.0'
+	testImplementation 'org.testcontainers:junit-jupiter:1.16.0'
 }
 
 tasks.named('test') {
