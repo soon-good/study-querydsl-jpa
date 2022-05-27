@@ -7,16 +7,12 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: postgres
     password: 1111
-    jdbcUrl: jdbc:postgresql://localhost:15432/postgres?characterEncoding=UTF-8&allowMultiQueries=true&connectTimeout=5000&socketTimeout=10000&rewriteBatchedInserts=true
-    hikari:
-      data-source-class-name: org.postgresql.Driver
-      jdbc-url: jdbc:postgresql://localhost:15432/postgres?characterEncoding=UTF-8&allowMultiQueries=true&connectTimeout=5000&socketTimeout=10000&rewriteBatchedInserts=true
-      username: postgres
-      password: 1111
-  sql:
-    init:
-      schema-locations:
-        - classpath:docker/sql/schema.sql
-      mode: always
+    url: jdbc:postgresql://localhost:15432/postgres
+# #  'script' must not be null or empty (테스트 스키마 적용전 아래 주석 해제)
+#  sql:
+#    init:
+#      schema-locations:
+#        - classpath:docker/sql/schema.sql
+#      mode: always
 
 
