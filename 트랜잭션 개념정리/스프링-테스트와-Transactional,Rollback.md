@@ -30,6 +30,8 @@ h2 접속 주소는 개발PC에 설치해서 사용할지, 인메모리로 사�
 
 - 개발 PC 에 접속해서 사용시 : `h2:tcp//localhost/~/test`
 - 인메모리로 접속해서 사용시 : `jdbc:h2:mem:db;DB_CLOSE_DELAY=1`
+  - 참고) 스프링부트는 데이터베이스에 대한 설정이 없을 경우 임베디드 데이터베이스를 사용한다.
+
 
 <br>
 
@@ -228,6 +230,17 @@ class SomethingTest{
 
 <br>
 
+### 테스트 코드에서 @Transactional 을 사용하는 것의 장점
+
+- 테스트가 끝난 후 개발자가 직접 데이터를 삭제하지 않아도 되기에 유지보수가 편리해진다.
+- 테스트 실행 중에 데이터를 등록하고 중간에 테스트가 종료되도 테스트 중에는 트랜잭션을 커밋하지 않기에, 롤백이 수행되지 않더라도 데이터는 자동으로 롤백된다. (데이터베이스 커넥션이 끊어지면, 커밋되지 않은 데이터는 자동으로 롤백된다.)
+- 트랜잭션 범위에서 테스트를 진행하므로 다른 테스트를 진행하더라도 서로 영향을 주지않는다는 장점이 있다.
+- @Transactional 을 사용하면 아래의 두가지 원칙을 지킬 수 있게 된다.
+  - 테스트는 다른 테스트와 격리해야 한다.
+  - 테스트는 반복해서 실행할 수 있어야 한다.
+
+<br>
+
 ### 테스트코드에서의 @Transactional 의 동작
 
 `@Transactional` 어노테이션을 테스트에서 사용하면 애플리케이션 영역에서 @Transactional 을 사용할 때와는 다르게 동작한다.<br>
@@ -236,4 +249,61 @@ class SomethingTest{
 
 (애플리케이션 계층에서 @Transactional 은 @Transactional 이 적용된 메서드가 실행이 성공적으로 수행되면 커밋하게끔 동작한다.)<br>
 
+아래 그림은 @Transactional 이 적용된 테스트 케이스가 실행될때의 동작을 그림으로 나타낸 그림이다. 자세히 보면, 트랜잭션의 마지막에 꼭 rollback 을 수행하는 것을 볼 수 있다.<br>
+
 <br>
+
+![1](./img/TRANSACTIONAL-ROLLBACK-1.png)
+
+<br>
+
+트랜잭션내에서 SELECT SQL을 수행하고 있다. 이때 같은 트랜잭션 내에서 조회하는 것이기에 INSERT SQL 로 실행한 결과가 조회된다. 하지만, 다른 트랜잭션에서는 INSERT 한 결과는 조회되지 않는다.<br>
+
+테스트가 끝난 후에는 트랜잭션을 강제로 롤백한다. @Transactional 이 적용된 테스트 코드는 테스트가 끝날 때 **트랜잭션을 강제 롤백**한다.<br>
+
+서비스/리포지터리 에 적용한 `@Transactonal` 도 테스트에서 시작한 트랜잭션으로 참여한다. 서비스/리포지터리 코드를 포함해서 테스트 코드가 실행하는 모든 코드는 테스트가 시작된 트랜잭션에 참여한다. (트랜잭션 전파 개념 .. 추후 정리 예정)<br>
+
+<br>
+
+## @Commit
+
+@Transactional 을 테스트 클래스/메서드에 붙였더라도 `@Commit` 을 클래스/메서드에 붙이면 테스트 종료 후 롤백 대신 커밋이 호출된다.
+
+> Test 코드를 작성하는 것이지만, 가끔은 데이터베이스에 데이터가 잘 보관되었는지 최종 결과를 확인해야 하는 경우도 있다. 이런 경우에 아주 드물게 @Commit 또는 @Rollback 어노테이션을 사용하기는 한다. 하지만 전체테스트 케이스 내에 포함이 되지 않도록 @Disabled  등의 어노테이션을 적용한다.
+
+```java
+import org.springframework.test.annotation.Commit;
+
+@Commit
+@Transactional
+@SpringBootTest
+class SomethingTest{
+}
+```
+
+<br>
+
+## @Rollback
+
+@Transactional 을 테스트 클래스/메서드에 붙였더라도 `@Rollback(value = false)` 를 클래스/메서드에 붙이면 테스트 종료 후 롤백 대신 커밋이 호출된다.
+
+> Test 코드를 작성하는 것이지만, 가끔은 데이터베이스에 데이터가 잘 보관되었는지 최종 결과를 확인해야 하는 경우도 있다. 이런 경우에 아주 드물게 @Commit 또는 @Rollback 어노테이션을 사용하기는 한다. 하지만 전체테스트 케이스 내에 포함이 되지 않도록 @Disabled  등의 어노테이션을 적용한다.
+
+```java
+import org.springframework.test.annotation.Commit;
+
+@Rollback(value = false)
+@Transactional
+@SpringBootTest
+class SomethingTest{
+}
+```
+
+<br>
+
+# 임베디드 모드 DB
+
+
+
+# 스프링부트의 임베디드 DB 기본설정
+
