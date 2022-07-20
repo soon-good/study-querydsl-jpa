@@ -1,18 +1,16 @@
 # 스프링의 트랜잭션 AOP 및 커밋,롤백 원칙
 
-> 아직도 전직장에서 내 깃헙을 몰래 훔쳐보는 듯한 트라우마가 남아있긴 하지만, 나도 어쩔 수 없이 내 할일을 해야 해서 일단 정리를 시작. 인권 가스라이팅 수준으로 불결한 경험을 줬던 사람들인 것 같다... 거의 트라우마 수준으로 남았다. 글을 새로 쓸때마다 이렇게 불안하게 만들정도면 말 다했지 않나 싶다.<br>
->
-> 불특정 다수가 내 깃헙을 보는것은 하나도 불쾌하지 않다. 그 중에 매일 노력하고, 선의를 가지고 내 깃헙을 보는 분들도 있을 듯 하다. 그런데 그런사람들이 있는지도 나도 잘 모르겠다. 그런 분들이 있다면 나도 싫지 않다. 나도 내 깃헙이 그냥 하루 하루 노력하는 결과를 저장하는 저장소여서 별 신경을 안쓴다. 하지만 전 직장 사람들이 내 깃헙을 보는 건 좀... 아니지 않나 싶다. 양심이 있다면 그러면 안되는 사람들이지 않나 싶다. <br>
-
-<br>
-
 # 참고자료
 
 - [스프링 DB 2편 - 데이터 접근 활용 기술 - 인프런 | 강의](https://www.inflearn.com/course/%EC%8A%A4%ED%94%84%EB%A7%81-db-2)
 
 오늘 정리하는 자료는 위의 자료를 요약한 내용이다. 강사님이 설명해주는 것에 비해 내가 요약한 내용은 턱없이 부족할 수 있다. 혹시라도 이 문서를 보는 누군가가 계신다면 가급적 강의를 들어보는 것을 추천. <br>
 
-내 경우는 보통 왠만한 강의를 들을 때 대부분 2배속으로 자주 듣는 편인데, 김영한님은 2배속으로 들어도 발음이 모두 잘 들려서 충분히 빠르게 훑어볼수 있다. 강의도 비싼 편은 아니니 꼭 한번 들어보는 것을 추천<br>
+2배속으로 들어도 발음이 모두 잘 들려서 충분히 빠르게 훑어볼수 있다. 강의도 비싼 편은 아니니 꼭 한번 들어보는 것을 추천쓰<br>
+
+<br>
+
+으하하하하하하하 정리가 힘들다 ㅠㅠ 코테준비하면서 짬내서 하는게 쬐끔 힘들다 흑... 이번주 안에 정리 되겠지?? 가자!!<br>
 
 <br>
 
@@ -93,8 +91,9 @@ Etc
   - 최 하위레벨에서 덮어쓴 선언이 최종 @Transactional 선언이 된다.
 - 인터페이스에 @Transactional
   - 인터페이스에도 @Transactional 이 적용될 수 있다.
-- Transactional 적용되지 않은 메서드에서 같은 클래스내의 @Transactional 메서드 내부 호출
-  - 이 부분은 아래에서 더 자세히 다룰 예정이다.
+- 예외상황) Transactional 이 적용되지 않은 메서드에서 같은 클래스내의 @Transactional 적용된 메서드 내부 호출
+  - 이 경우, 아래와 같은 방식으로 수행된다.
+  - 가짜 객체의 일반 메서드 A 호출 -> 가짜객체는 실제 객체의 일반메서드 A 호출 -> 실제 객체의 일반 메서드A에서 @Transactional 메서드 AA 호출 -> @Transactional 적용 안됨.
 
 <br>
 
@@ -158,54 +157,212 @@ tx readOnly = true
 
 ## 스프링의 @Transactional 에 대한 프록시 객체 생성/등록 원리
 
-- @Transactional 이 적용된 트랜잭션 프록시 객체는 실제 객체를 부모로 해서 상속받은 가짜 객체다.
-- 그리고 이 트랜잭션 프록시 객체 내에는 트랜잭션의 시작/커밋/롤백 처리를 후처리 할 수 있는 내부 로직이 있다.
-- 이런 처리를 하는 기준은 트랜잭션 프록시 객체내에 @Transactional 어노테이션이 있는가이다.
-  - (커스텀 어노테이션을 스프링에 등록해서 사용하는 예제를 떠올려보면 이해가 쉽게 된다.)
-- 실제 객체에는 아무리 @Transactional 이 있더라도 실제 객체의 메서드를 바로 직접 호출하는 경우눈, @Transactional에 합당한 동작은 안하고, 메서드 몸체만 단순 실행하게 된다.
+**요약**
 
-> 조금 더 명확하게 정리. 내 목표는 더 명확하게 정리/요약하는게 목적이다.<br>
+- @Transactional 이 적용된 트랜잭션 프록시 객체는 실제 객체를 부모로 해서 상속받은 가짜 객체다.
+- 이 가짜 객체는 스프링 컨테이너가 로딩되면서, 스프링 컨테이너가 프록시 라이브러리를 통해 실제 객체를 상속받은 가짜 객체를 프록시 방식으로 생성해놓은 객체다. @Transactional 이 선언되있는 클래스는 내부적으로는 스프링의 컨테이너가 스프링 컨테이너 로딩시에 프록시 객체를 생성해서 빈으로 등록해준다.
+- 그리고 이 트랜잭션 프록시 객체 내에는 트랜잭션의 시작/커밋/롤백 처리를 후처리 할 수 있는 내부 로직이 있다.
+- 커스텀 어노테이션을 생성했을 때 스프링에서 사용할 수 있도록 하는 예제를 만들어봤다면, 이해가 쉽울듯.
 
 <br>
 
+**@Transactional 이 적용되지 않을수도 있는 예외 케이스**<br>
 
+- (예외상황) Transactional 이 적용되지 않은 메서드에서 같은 클래스내의 @Transactional 적용된 메서드 내부 호출
+  - 이 경우, 아래와 같은 방식으로 수행된다.
+  - 가짜 객체의 일반 메서드 A 호출 -> 가짜객체는 실제 객체의 일반메서드 A 호출 -> 실제 객체의 일반 메서드A에서 @Transactional 메서드 AA 호출 -> @Transactional 적용 안됨.
+
+<br>
+
+**ex) BookApiController, BookService**<br>
+
+예를 들어 BookApiController, BookService 클래스가 있다고 해보자. 이 경우 트랜잭션 프록시는 아래와 같은 흐름으로 호출된다.
 
 ![1](./img/TRANSACTIONAL-PROXY-OVERVIEW-1.png)
 
-스프링은 `@Transactional` 이 적용된 클래스 또는 클래스내의 public 메서드 들 중 단 하나의 메서드 라도 `@Transactional` 이 적용된 클래스가 있으면, 해당 클래스를 상속받은 가짜클래스타입의 객체를 생성한다. 이렇게 생성된 가짜 객체는 Proxy 역할을 수행하기 위해 스프링 컨테이너에 의해 생성된 객체다.<br>
+<br>
 
-이 Proxy 객체는 트랜잭션의 시작/커밋/롤백 코드 수행을 담당하게 된다. 이렇게 스프링이 생성한 Proxy 객체는 보통 디버깅화면이나 로그 화면에서 보면 `$$CGLIB` 이라는 접미사가 붙어있는 것을 볼 수 있다.<br>
+**(1) 트랜잭션 프록시 객체 빈 등록**<br>
 
-> 예를 들어 BookApiController 라는 클래스와 BookApiControllerTest 라는 클래스가 있다고 해보자. BookApiController, BookApiControllerTest 둘 중 어느 것으로 예로 들 수 있겠지만, 개념정리를 위해서는 역시 단순한 케이스가 더 낫기 때문에, BookApiControllerTest 내에서 @Transactional 이 적용된 메서드를 호출하는 경우를 예제로 정리하기로 했다.
+스프링은 트랜잭션 프록시를 적용해야 할 Bean이 보인다면, 컨테이너 로딩시에 해당 객체를 프록시 객체로 만들어서 해당객체의 Bean에 프록시 객체를 등록해둔다. 이때 스프링이 트랜잭션 프록시 객체 생성을 할 타입을 찾는 조건은 아래와 같다.<br>
+
+- `@Transactional` 이 클래스 레벨에 선언된 클래스
+- 클래스내의 public 메서드 들 중 단 하나의 메서드 라도 `@Transactional` 이 적용된 클래스
+- implements 하고 있는 interface에 @Transactional 이 적용되어 있을 경우
+
+이렇게 생성된 가짜 객체는 Proxy 역할을 수행하기 위해 스프링 컨테이너에 의해 생성된 객체다. 이 Proxy 객체는 트랜잭션의 시작/커밋/롤백 코드 수행을 담당하게 된다. (이렇게 스프링이 생성한 Proxy 객체는 보통 디버깅화면이나 로그 화면에서 보면 `$$CGLIB` 이라는 접미사가 붙어있는 것을 볼 수 있다.)<br>
 
 <br>
 
-**BookService - txSaveBook(), notTxSaveBook()**
+**(2) BookApiController/BookApiControllerTest -> bookService.txSaveBook() or bokService.notTxSaveBook() 호출**
 
-BookApiController, BookApiControllerTest 클래스는 각각 BookService 객체 내의 `txSaveBook()` , `notTxSaveBook()` 메서드를 호출한다. txSaveBook() 메서드는 @Transactional 이 적용된 메서드이고, notTxSaveBook() 메서드는 @Transactional 어노테이션을 적용하지 않은 메서드다.<br>
+> **bookService.txSaveBook() 호출**<br>
 
-<br>
+BookApiController 에서 bookService 의 txSaveBook() 메서드를 호출하는 경우를 생각해보자. txSaveBook() 메서드는 메서드 정의시 메서드의 구현부 바로 위에`@Transactional` 어노테이션을 적용해둔 상태다. 이 경우, @Transactional 이 호출할 메서드 바디의 실행전/실행 후에 트랜잭션의 시작/커밋/롤백 처리가 적용된다.<br>
 
-**BookApiControllerTest 클래스 내에서 txSaveBook() 메서드를 호출할 때**
+트랜잭션 프록시가 메서드 바디의 실행 전/후에 실행되는 절차는 아래와 같다.
 
-txSaveBook() 을 호출할 때 사용하는 객체는 스프링 컨테이너가 BookService 를 상속받는 타입으로 생성한 프록시 객체인 bookService$$CGLIB1 이다.<br>
-
-(스프링은 클래스의 범위내에 하나라도 @Transactional 이 존재하면 프록시 객체를 생성해서 Bean으로 등록해두기에, 실제 객체가 아닌 프록시 객체가 사용된다.)<br>
-
-이 bookService$$CGLIB1 이라는 프록시 객체 내의 txSaveBook() 메서드가 호출될 때 txSaveBook() 메서드의 실행 전후에는 트랜잭션 시작/커밋/롤백이 적용되어 호출된다. 실제 txSaveBook 로직은 프록시 객체 입장에서 부모 클래스인 실제 bookService 객체의 구현부를 그대로 호출한다.<br>
+- 메서드의 바디를 트랜잭션 프록시가 잡고 있고, 
+- 메서드 시작전) 트랜잭션 프록시가 트랜잭션 시작로직을 호출한다. 
+- 메서드 구현부 종료후) 트랜잭션 커밋/롤백 호출하는 방식으로 수행된다.
 
 <br>
 
-**BookApiControllerTest 클래스 내에서 notTxSaveBook() 메서드를 호출할 때**
+> **bookService.notTxSaveBook() 호출**<br>
 
-notTxSaveBook() 을 호출할 때 사용하는 객체 역시 스프링 컨테이너가 BookService 를 상속받는 타입으로 생성한 프록시 객체인 bookService$$CGLIB1 이다. @Transactional 이 적용되지 않은 메서드를 호출했음에도, 프록시 객체를 통해서 `notTxSaveBook()` 메서드가 호출된다.<br>
+BookApiController 에서 bookService 의 notTxSaveBook() 메서드를 호출하는 경우를 생각해보자. notTxSaveBook() 메서드는 메서드 정의시 메서드의 구현부에 @Transactional 이 적용되어있지 않은 상태다.<br>
 
-(스프링은 클래스의 범위내에 하나라도 @Transactional 이 존재하면 프록시 객체를 생성해서 Bean으로 등록해두기에, 실제 객체가 아닌 프록시 객체가 사용된다.)<br>
+이 경우, 같은 클래스 내의 txSaveBook( ) 메서드가 @Transactional 이 적용되어 있기에, 트랜잭션 프록시 객체가 소유한 notTxSaveBook() 메서드가 호출된다. 하지만 notTxSaveBook() 메서드에는 `@Transactioanl` 이 적용되어 있지 않은 상태이기 때문에, 트랜잭션 시작/커밋/롤백 처리는 적용되지 않는다.<br>
 
-이 bookService$$CGLIB1 이라는 프록시 객체 내의 notTxSaveBook() 메서드가 호출될 때 notTxSaveBook() 메서드의 실행 전후에는 트랜잭션 시작/커밋/롤백이 적용되지 않은 순수한 메서드가 호출된다. 프록시 객체내의 트랜잭션 시작/커밋/롤백을 적용하지 않고 실객체의 notTxSaveBook() 메서드를 호출하게 되기 때문이다.<br>
+<br>
+
+와... 머릿속에 있는 것을 다시 볼때 알아들을 수 있는 언어로 정리하는 게 이렇게 힘들줄이야... ㄷㄷㄷ하다.<br>
 
 <br>
 
 ## Transactional 적용되지 않은 메서드에서 같은 클래스내의 @Transactional 메서드 내부 호출하는 경우
 
-여기부터는 내일 새벽 내지, 내일 중으로 정리 예정. 
+> 조금 단순하게 예를 들어보면, 이런 경우다.<br>
+>
+> Transactional 이 적용되지 않은 메서드에서 같은 클래스내의 @Transactional 적용된 메서드 내부 호출
+>
+> - 이 경우, 아래와 같은 방식으로 수행된다.
+> - 가짜 객체의 일반 메서드 A 호출 -> 가짜객체는 실제 객체의 일반메서드 A 호출 -> 실제 객체의 일반 메서드A에서 @Transactional 메서드 AA 호출 -> @Transactional 적용 안됨.
+
+<br>
+
+**!!!!!!!!!!!!!!!!!!!! 아래에서부터는 노션에서 일단 조금씩 정리하면서 가져온건데, 오늘 윗 부분의 글의 요약을 다시한 것처럼 아래 글의 노션에서 가져온 부분은 내일 또 다듬기 작업이 핅요함!!!(까먹지 말자 좀 ㅠㅠ)**<br>
+
+<br>
+
+**예제 시나리오**
+
+- BookService 객체에서 `@Transactional` 이 적용되지 않은 notTxSaveBook 메서드가 있다.
+- 이 notTxSaveBook() 메서드 내에서는 txSaveBook() 메서드를 호출하고 있다.
+- txSaveBook()메서드는 @Transactional 이 적용된 메서드다.
+- 그리고 BookServiceTest 내에서 bookService 객체를 빈으로 주입받아서 notTxSaveBook() 메서드를 호출한다고 해보자.
+- 이때, notTxSaveBook() 메서드를 호출할때 스프링의 트랜잭션이 적용될까?
+
+쉽게 설명하면 아래와 같은 코드 호출 구조다.
+
+<br>
+
+```java
+class BookService{
+	// ...
+	public void notTxSaveBook(){
+		txSaveBook();
+	}
+
+	@Transactional
+	public void txSaveBook(){
+		// some logic
+	}
+
+}
+```
+
+<br>
+
+호출 구조를 그림으로 표현해보면 아래와 같은 구조다.<br>
+
+![1](./img/TRANSACTIONAL-PROXY-NOT-TX-EXAMPLE.png)
+
+<br>
+
+검은색으로 표시한 `bookService$$CGLIB` 객체는 트랜잭션 프록시가 적용된 객체다. 프록시가 적용된 객체는 보통 뒤에 `CGLIB` 이라는 접미사가 붙는다.<br>
+
+파란색으로 표시된 `bookService` 객체는 실제 객체다.<br>
+
+<br>
+
+**트랜잭션이 적용되지 않는 이유**<br>
+
+프록시 객체내에서의 notTxSaveBook() 메서드가 프록시 객체내의 txSaveBook 을 호출했다면 트랜잭션이 적용되었을 것이다. 하지만, 프록시 객체내의 notTxSaveBook() 은 `@Transactional` 의 영향권 밖이다.<br>
+
+따라서 별도의 트랜잭션 처리 없이 실제 bookService 객체 내의 notTxSaveBook() 메서드를 호출하고, 실제 객체 내의 txSaveBook() 메서드를 호출한다. 현재 상황에서는 실제 객체 bookService 객체는 트랜잭션 프록시가 적용되어 있지 않기에 실제 객체 내의 txSaveBook()메서드에 적용된 `@Transactional` 어노테이션은 그냥 알파벳으로만 존재하는 문자일 뿐이다. 따라서 트랜잭션이 적용되지 않는다.<br>
+
+<br>
+
+지금까지의 예를 테스트해보기 위한 예제는 아래와 같다.
+
+```jsx
+@Slf4j
+@SpringBootTest
+public class BookServiceTest {
+
+	@Autowired
+	BookService bookService;
+
+	@Test
+	public void printProxy(){
+		log.info("bookService class = {}", bookService.getClass());
+	}
+
+	@Test
+	public void txMethodCall(){
+		bookService.txSaveBook();
+	}
+
+	@Test
+	public void notTxMethodCall(){
+		bookService.notTxSaveBook();
+	}
+
+	@TestConfiguration
+	static class InlineConfig {
+		@Bean
+		BookService bookService(){
+			return new BookService();
+		}
+	}
+
+	@Slf4j
+	static class BookService{
+
+		public void notTxSaveBook(){
+			log.info("Not 트랜잭셔널 메서드 호출");
+			printTxInfo();
+			txSaveBook();
+		}
+
+		@Transactional
+		public void txSaveBook(){
+			log.info("트랜잭셔널 메서드 호출");
+			printTxInfo();
+		}
+
+		// 트랜잭션 적용여부 로깅용도 메서드
+		private void printTxInfo(){
+			boolean txActive = TransactionSynchronizationManager.isActualTransactionActive();
+			log.info("tx active ?? {}", txActive);
+		}
+
+	}
+
+}
+```
+
+<br>
+
+**해결방법 - notTxSaveBook() 메서드에도 트랜잭션이 적용되게끔 하려면?**
+
+아래 코드처럼 별도의 클래스로 분리해준다. 내부호출이 되지 않게끔하는 것이 목적이기에 다른 클래스의 메서드로 분리해뒀다. 이 외에도 실무에서 다양한 문제에 부딪히는데 이것과 관련해서는 글이 길어질것 같아 다른 문서에서 정리 예정이다.
+
+```jsx
+class BookService{
+	// ...
+	// 아래 코드를 별도의 클래스로 옮겨서
+	public void notTxSaveBook(){
+		txBookService.txSaveBook();
+	}
+	// ...
+}
+
+class TxBookService{
+	@Transactional
+	public void txSaveBook(){
+		// some logic
+	}
+}
+```
