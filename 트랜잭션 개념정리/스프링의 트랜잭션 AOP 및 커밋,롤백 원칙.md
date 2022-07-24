@@ -12,6 +12,21 @@
 
 <br>
 
+2022.07.25
+
+- 스프링의 커밋/롤백 을 정리하기 시작
+
+- 스프링에서의 커밋/롤백을 실제로 테스트해볼때 테스트 코드에서는 확인하기가 쉽지 않았었다. 그 이유는 @Transactional 의 test 코드에서의 커밋/롤백 때문이었다. 테스트코드에서의 커밋/롤백 정책은 테스트에 대한 개념이 있어야 이해가 가능할 듯 하다.
+- 그때 Web Application 내에서 테스트를 진행한 후 커밋 롤백을 DB에 저장이 되었는지를 기준으로 테스트했던 것으로 기억한다.
+- 물론 테스트 코드도 만들어서 테스트 했지만, 마음에 썩 들지는 않았었다.
+- 그 이후로 몇주뒤였던가 싶을때 위 강의와 강의 프린트를 보고 어떻게 테스트할지 감을 잡았던 것 같다. 
+  - (일도 꽤 힘들고, 시간이 없는 와중에도 이때는 스터디를 꽤 열심히 했다.)
+- 강의 프린트에서도 늘 언급을 하는 것이 트랜잭션 적용원칙이나, 내부메서드 중첩호출로 인한 트랜잭션 적용원칙, 커밋/롤백 원칙 등은 실무에서도 혼동하는 사람이 꽤 많고, 실무에서도 중요한 주제인 것으로 보였다.
+
+- 혼자서 테스트해볼때는 나름 막연한 것이 많았는데, 위의 자료를 보고 스터디에 큰 도움을 얻었다. 위의 강의를 만드실때 스프링 내부 코드를 직접 확인해보고, TransactionSynchronizationManager 클래스내의 여러 메서드들의 API를 직접 확인해보느라 시간과 고생을 많이 들이셨을 것 같다는 생각이 들었다.
+
+<br>
+
 # 리마인드 - 스프링의 트랜잭션
 
 - [리마인드 - 스프링의 트랜잭션](https://github.com/soon-good/study-querydsl-jpa/blob/develop/%ED%8A%B8%EB%9E%9C%EC%9E%AD%EC%85%98%20%EA%B0%9C%EB%85%90%EC%A0%95%EB%A6%AC/%EB%A6%AC%EB%A7%88%EC%9D%B8%EB%93%9C-%EC%8A%A4%ED%94%84%EB%A7%81%EC%9D%98%20%ED%8A%B8%EB%9E%9C%EC%9E%AD%EC%85%98.md)
@@ -497,24 +512,77 @@ Init Complete, txActive ?? true
 
 <br>
 
-# 스프링에서의 트랜잭션 커밋/롤백
+# Exception 발생시 스프링의 트랜잭션 커밋/롤백정책
 
-드디어 대망의 커밋/롤백 원칙 챕터다. 이번 챕터 역시 일단 노션에 정리했던 내용을 그대로 가져왔다. 그리고 정리는 내일 새벽 내지 그 다음날 새벽 쯤에 정리하게 될 것 같다~\~\~<br>
+드디어 대망의 트랜잭션 커밋/롤백 정책이다.<br>
 
-이번 문서를 끝내고 나면, 트랜잭션의 전파에 대해서 정리할 예정이다.<br>
+<br>
+
+## UncheckedException, CheckedException
+
+JAVA의 Exception 은 아래의 두가지 종류가 있다.
+
+- 언체크 예외(Unchecked Exception)
+  - [RuntimeException (Java SE 9 & JDK 9 )](https://docs.oracle.com/javase/9/docs/api/java/lang/RuntimeException.html)
+- 체크 예외(Checked Exception)
+  - [Exception (Java Platform SE 8 )](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Exception.html)
+
+<br>
+
+스프링에서는 Unchecked Exception, Checked Exception 을 처리하는 나름의 기준을 세워두고 있다. <br>
+
+<br>
+
+## 시스템 예외, 비즈니스 예외
+
+여러가지 기준이 있을 수 있겠지만, 시스템예외, 비즈니스 예외라는 프레임으로 예외들을 구분해보자.
+
+- 시스템 예외
+  - 네트워크 에러 와 같은 예외상황이 발생하는 경우를 의미한다.
+- 비즈니스 예외
+  - 예를 들면 주문시에 잔고가 부족해 결제에 실패하면 주문 데이터를 저장하고 결제 상태를 대기 상태로 표시하는 경우가 있다.
+  - 이 경우 고객에게는 잔고 부족을 알리고, 결제를 다시 하도록 안내하는 등의 화면을 표시하고 알림 메일을 발송한다.
+
+<br>
+
+직접 트랜잭션 관련 코드를 유지보수하는 것이 아닌, 처음부터 개발을 시작할 경우 예외 코드를 작성할 때 
+
+- 비즈니스 예외는 체크예외로 처리하는게 맞을까? 
+- 시스템 예외는 언체크 예외로 두어 처리해야 할까? 
+- 어떤 규칙으로 처리하는게 맞을까? 
+
+이런 궁금증에 직면하게 될 것 같다.
+
+<br>
+
+이 경우 보통 아래의 기준으로 적용하게 된다.(물론 예외 케이스도 있을수 있다.)<br>
+
+<br>
+
+비즈니스 예외
+
+- 비즈니스 예외의 의미가 있을 때 사용
+- 체크예외로 취급
+- 비즈니스 적으로 예외가 발생한 것은 Checked 되어야 한다는 의미인것 같다.
+- 비즈니스 적으로 예외가 발생하는 것은 어떤 상태에서 어떤 이유로 예외가 발생되었는지 기록이 되어야 하기에 예외가 발생하더라도 커밋이 되는 Checked Exception 을 사용한다. (=체크를 한다는 의미)
+
+시스템 예외
+
+- 복구할 수 없는 예외는 커밋이 되어야 하지 말아야 한다.
+- 예를 들면 네트워크 유실 등의 예외가 발생하면, 커밋이 발생하지 않는다.
+- 언체크드 예외로 취급한다.
+
+<br>
+
+오늘은 이 부분들에 대해 알아보기 위해 테스트 코드를 기반으로 해당 내용들을 확인해본다.<br>
+
+강사님은 테스트 코드까지 직접 작성할 수 있도록 떠먹여주시고 계신다. 실제 강의를 볼 수 있다면 꼭 보는 것을 추천.<br>
 
 <br>
 
 ## 스프링 트랜잭션 AOP 객체의 커밋/롤백 원칙
 
-JAVA의 Exception 은 아래의 두가지 종류가 있다.
-
-- 언체크 예외(UncheckedException)
-  - [RuntimeException (Java SE 9 & JDK 9 )](https://docs.oracle.com/javase/9/docs/api/java/lang/RuntimeException.html)
-- 체크 예외(CheckedException)
-  - [Exception (Java Platform SE 8 )](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Exception.html)
-
-스프링 트랜잭션의 커밋/롤백 원칙은 아래와 같다.
+언체크, 체크 예외에 대한 스프링의 커밋/롤백 원칙은 아래와 같다.
 
 - 언체크 예외에 대한 커밋/롤백 원칙
   - 예외 발생시 트랜잭션을 롤백한다.
@@ -529,9 +597,15 @@ JAVA의 Exception 은 아래의 두가지 종류가 있다.
 
 단, 체크예외를 사용하더라도 `@Transactional` 에 rollbackFor 옵션에 원하는 예외 클래스를 지정하면, 예외가 발생하면 롤백을 한다. (오버라이딩하는 느낌?)
 
-## 테스트 시 로깅을 위해 적용하는 jpa 옵션
+<br>
 
-테스트 시에 트랜잭션의 롤백을 확인할때 아래의 로깅옵션을 통해서 롤백이 되었는지 아닌지를 확인할 수 있다.
+## 테스트 시작) 로깅을 위해 적용하는 jpa 옵션
+
+- 아래에서부터는 가급적이면 직접 테스트코드를 작성해봐야 한다. 
+
+테스트 시에 트랜잭션의 롤백을 확인할때 아래의 로깅옵션을 통해서 롤백이 되었는지 아닌지를 확인할 수 있다.<br>
+
+`application.properties`
 
 ```jsx
 logging.level.org.springframework.transaction.interceptor=TRACE
@@ -545,38 +619,39 @@ logging.level.org.hibernate.resource.transaction=DEBUG
 logging.level.org.hibernate.SQL=DEBUG
 ```
 
-테스트코드에 @RollbackFor 또는 @Commit 같은 어노테이션을 명시적으로 두어서 테스트하는 방식은 결과를 확인하기에는 좋더라도, 테스트 본연의 목적에는 부합하지 않는다. 이런 이유로 트랜잭션 적용여부를 확인할 때에 보통 WAS 기반으로 구동을 해서 육안으로 DB의 데이터를 확인하면서 롤백되었는지, 커밋되었는지를 확인하게 된다.
+<br>
 
-하지만, 이런 방식은 새로운 기능이 추가되거나 하는 등의 경우에는 유연하게 대응하기 쉽지 않다. 그래서 대신 이렇게 로그를 통해서 기능을 정확하게 확인하는 방법이 제품 검증에 더 좋은 방식인 것 같다.
+그냥 문자만 멍하니 보다가 복붙하면, 각각의 속성을 왜 붙였는지 이유를 궁금해지지 않는다. 이 말을 적어두는 이유는, 나 역시도 제일 처음 프린트를 읽으면서 스터디를 할때 이 부분에 대해서 너무나 스무스하게 지나쳤었다. 아무 생각없이 글자만 읽고 지나쳤었다.<br>
 
-## 시스템 예외, 비즈니스 예외
+<br>
 
-예외에는 여러가지 종류가 있다. 그 중 시스템 예외로 분류될 수 있는 것도 있지만, 비즈니스로직에 관련된 예외 역시 있다.
+- logging.level.org.springframework.transaction.interceptor
+  - AOP가 적용된 스프링의 트랜잭션 프록시는 가급적이면 이 옵션에 대해 TRACE 로 해두면 동작을 확인하기에 유용하다.
+- logging.level.org.springframework.jdbc.datasource.DataSourceTransactionManager
+  - DataSourceTransactionManager 클래스는 기본적으로 JDBC 가 사용하는 트랜잭션 매니저 구현체 클래스다.  
+    - 참고: [DataSourceTransactionManager (Spring Framework 5.3.22 API)](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/jdbc/datasource/DataSourceTransactionManager.html) 
+  - 즉, JDBC의 트랜잭션 매니저를 로그에 찍히도록 켜둔 것.
+- JpaTransactionManager
+  - logging.level.org.springframework.orm.jpa.JpaTransactionManager=DEBUG
+  - 스프링에서의 Jpa의 트랜잭션 매니저인 JpaTransactionManager 를 DEBUG 레벨로 켜둔다.
+- hibernate
+  - logging.level.org.hibernate.resource.transaction=DEBUG
+  - logging.level.org.hibernate.SQL
+  - hibernate 레벨의 로그를 켜두었다. 유의할 점은 transaction 역시도 켜두었다는 것.
+  - 로그 레벨을 켜둘 패키지를 찾는 것도 꽤 번거로운 작업이었겠다 하고 생각했다.
 
-- 시스템 예외
-  - 네트워크 에러 와 같은 예외상황이 발생하는 경우를 의미한다.
-- 비즈니스 예외
-  - 예를 들면 주문시에 잔고가 부족해 결제에 실패하면 주문 데이터를 저장하고 결제 상태를 대기 상태로 표시하는 경우가 있다.
-  - 이 경우 고객에게는 잔고 부족을 알리고, 결제를 다시 하도록 안내하는 등의 화면을 표시하고 알림 메일을 발송한다.
-
-보통 체크 예외와 언체크 예외는 아래와 같이 처리하는 편이다.
-
-- 체크 예외 : 비즈니스 예외의 의미가 있을 때 사용
-  - 스프링 트랜잭션은 체크예외가 있을 때 롤백을 하지 않는다.
-  - 비즈니스 적으로 예외가 발생한 것은 Checked 되어야 한다는 의미인것 같다.
-  - 비즈니스 적으로 예외가 발생하는 것은 어떤 상태에서 어떤 이유로 예외가 발생되었는지 기록이 되어야 하기에 예외가 발생하더라도 커밋이 되는 Checked Exception 을 사용한다. (=체크를 한다는 의미)
-- 언체크 예외 : 복구할 수 없는 예외는 커밋이 되지 말아야 한다.
-  - 예를 들어 네트워크 유실등의 예외가 발생하면, 커밋이 발생하지 않는다.
+<br>
 
 ## 예제 1) 언체크드 예외(Unchecked Exception) 의 커밋/롤백 확인 예제
 
-```jsx
+```java
 @SpringBootTest
 public class RollbackTest1{
 
 	@Autowired
 	BookService bookService;
 
+    // 
 	@Test
 	public void 언체크드_예외_테스트(){
 		assertThatThrownBy(() -> bookService.throwUncheckedException())
@@ -603,9 +678,11 @@ public class RollbackTest1{
 }
 ```
 
-위의 예제를 실행하는 결과는 아래와 같다. 롤백을 수행하는 것을 확인할 수 있다.
+<br>
 
-```jsx
+위의 예제에서 "언체크드\_예외\_테스트" 라고 적힌 테스트 케이스를 실행하는 결과는 아래와 같다. bookService 객체의 `throwUncheckedException()` 메서드를 호출하면, 롤백을 수행하는 것을 로그를 통해 확인할 수 있다.
+
+```plain
 ...
 런타임 예외 호출
 ...
@@ -613,9 +690,11 @@ Initiating transaction rollback
 Rolling back JPA transaction on EntityManager
 ```
 
+<br>
+
 ## 예제 2) 체크드(Checked) 예외의 커밋/롤백 확인 예제
 
-```jsx
+```java
 @SpringBootTest
 public class RollbackTest2{
 
@@ -623,7 +702,7 @@ public class RollbackTest2{
 	BookService bookService;
 
 	@Test
-	public void 언체크드_예외_테스트(){
+	public void 체크드_예외_테스트(){
 		assertThatThrownBy(() -> bookService.throwCheckedException())
 			.isInstanceOf(Exception.class);
 	}
@@ -648,15 +727,19 @@ public class RollbackTest2{
 }
 ```
 
-위의 예제를 실행하는 결과는 아래와 같다. 체크드 예외가 발생할 때에는 커밋이 그대로 수행되는 것을 확인할 수 있다.
+<br>
 
-```jsx
+위의 예제를 실행하는 결과는 아래와 같다. "체크드\_예외\_테스트" 라고 적힌 테스트 케이스를 실행하는 결과는 아래와 같다. 체크드 예외가 발생할 때에는 커밋이 그대로 수행되는 것을 확인할 수 있다.
+
+```java
 ...
 체크드 예외 호출
 ...
 Initiating transaction commit
 Committing JPA transaction on EntityManager
 ```
+
+<br>
 
 ## 예제3) 체크드 예외여도 rollbackFor에 예외를 지정하면 롤백되는지 확인
 
@@ -696,7 +779,9 @@ public class RollbackTest3{
 }
 ```
 
-예제를 실행한 결과는 아래와 같다.
+<br>
+
+예제를 실행한 결과는 아래와 같다. 롤백을 잘 수행하는 것을 볼 수 있다.
 
 ```jsx
 ...
@@ -706,9 +791,15 @@ Initiating transaction rollback
 Rolling back JPA transaction on EntityManager
 ```
 
+<br>
+
 ## 예제4) 비즈니스 예외
 
-체크드 익셉션 정의
+도서 정보를 저장하는 메서드인 `saveBook(Book book)` 메서드를 등록하는 테스트를 통해서 비즈니스 예외를 정의하고 어떻게 처리 되는지 확인해보기 위한 예제다.<br>
+
+<br>
+
+**체크드 익셉션 정의**
 
 ```jsx
 public class NoPriceInformationException extends Exception {
@@ -718,7 +809,9 @@ public class NoPriceInformationException extends Exception {
 }
 ```
 
-BookRegisterService
+<br>
+
+**BookRegisterService**
 
 ```jsx
 @Slf4j
@@ -751,7 +844,9 @@ public class BookRegisterService{
 }
 ```
 
-BookServiceTest
+<br>
+
+**BookServiceTest**
 
 ```jsx
 @Slf4j
@@ -796,3 +891,5 @@ public class BookServiceTest{
 	}
 }
 ```
+
+<br>
