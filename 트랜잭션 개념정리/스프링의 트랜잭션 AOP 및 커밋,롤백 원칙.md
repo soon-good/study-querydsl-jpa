@@ -1,29 +1,12 @@
-# 스프링의 트랜잭션 AOP 및 커밋,롤백 원칙
+# 스프링의 트랜잭션 프록시, 커밋,롤백 원칙
 
 # 참고자료
 
 - [스프링 DB 2편 - 데이터 접근 활용 기술 - 인프런 | 강의](https://www.inflearn.com/course/%EC%8A%A4%ED%94%84%EB%A7%81-db-2)
 
-<br>
+오늘 정리하는 자료는 위의 자료를 요약한 내용이다. 강사님이 설명해주는 것에 비해 내가 요약하고 있는 내용은 턱없이 부족할 수 있다. 혹시라도 이 문서를 보는 누군가가 계신다면 가급적 강의를 들어보는 것을 추천. <br>
 
-오늘 정리하는 자료는 위의 자료를 요약한 내용이다. 강사님이 설명해주는 것에 비해 내가 요약한 내용은 턱없이 부족할 수 있다. 혹시라도 이 문서를 보는 누군가가 계신다면 가급적 강의를 들어보는 것을 추천. <br>
-
-2배속으로 들어도 발음이 모두 잘 들려서 충분히 빠르게 훑어볼수 있다. 강의도 비싼 편은 아니니 꼭 한번 들어보는 것을 추천쓰<br>
-
-<br>
-
-2022.07.25
-
-- 스프링의 커밋/롤백 을 정리하기 시작
-
-- 스프링에서의 커밋/롤백을 실제로 테스트해볼때 테스트 코드에서는 확인하기가 쉽지 않았었다. 그 이유는 @Transactional 의 test 코드에서의 커밋/롤백 때문이었다. 테스트코드에서의 커밋/롤백 정책은 테스트에 대한 개념이 있어야 이해가 가능할 듯 하다.
-- 그때 Web Application 내에서 테스트를 진행한 후 커밋 롤백을 DB에 저장이 되었는지를 기준으로 테스트했던 것으로 기억한다.
-- 물론 테스트 코드도 만들어서 테스트 했지만, 마음에 썩 들지는 않았었다.
-- 그 이후로 몇주뒤였던가 싶을때 위 강의와 강의 프린트를 보고 어떻게 테스트할지 감을 잡았던 것 같다. 
-  - (일도 꽤 힘들고, 시간이 없는 와중에도 이때는 스터디를 꽤 열심히 했다.)
-- 강의 프린트에서도 늘 언급을 하는 것이 트랜잭션 적용원칙이나, 내부메서드 중첩호출로 인한 트랜잭션 적용원칙, 커밋/롤백 원칙 등은 실무에서도 혼동하는 사람이 꽤 많고, 실무에서도 중요한 주제인 것으로 보였다.
-
-- 혼자서 테스트해볼때는 나름 막연한 것이 많았는데, 위의 자료를 보고 스터디에 큰 도움을 얻었다. 위의 강의를 만드실때 스프링 내부 코드를 직접 확인해보고, TransactionSynchronizationManager 클래스내의 여러 메서드들의 API를 직접 확인해보느라 시간과 고생을 많이 들이셨을 것 같다는 생각이 들었다.
+2배속으로 들어도 발음이 모두 잘 들려서 충분히 빠르게 훑어볼수 있다. 강의도 비싼편은 아닌듯.<br>
 
 <br>
 
@@ -100,7 +83,7 @@ public class BookService{
 
 출력결과
 
-```java
+```plain
 tx active = true
 tx readOnly = true
 ```
@@ -350,7 +333,7 @@ bookService 종료
 
 지금까지의 예를 테스트해보기 위한 예제는 아래와 같다.
 
-```jsx
+```java
 @Slf4j
 @SpringBootTest
 public class BookServiceTest {
@@ -426,7 +409,7 @@ tx active ?? false
 
 아래 코드처럼 별도의 클래스로 분리해준다. 내부호출이 되지 않게끔하는 것이 목적이기에 다른 클래스의 메서드로 분리해뒀다. 이 외에도 실무에서 다양한 문제에 부딪히는데 이것과 관련해서는 글이 길어질것 같아 다른 문서에서 정리 예정이다.
 
-```jsx
+```java
 class BookService{
 	// ...
 	public void notTxSaveBook(){
@@ -491,7 +474,7 @@ Init Complete, txActive ?? false
 
 ApplicationReadyEvent 시점에는 트랜잭션이 초기화되는 것을 확인할 수 있다. ApplicationReadyEvent는 스프링 컨테이너가 완전히 로딩된 시점에 호출된다. 따라서 트랜잭션이 적용된 시점에 호출된다.
 
-```jsx
+```java
 @SpringBootTest
 public class SpringInitTest2{
 
@@ -506,7 +489,7 @@ public class SpringInitTest2{
 
 이 경우 로그를 보면 아래와 같이 출력된다.
 
-```jsx
+```plain
 Init Complete, txActive ?? true
 ```
 
@@ -518,7 +501,19 @@ Init Complete, txActive ?? true
 
 <br>
 
-## UncheckedException, CheckedException
+## 시스템 예외, 비즈니스 예외
+
+여러가지 기준이 있을 수 있겠지만, 시스템예외, 비즈니스 예외라는 프레임으로 예외들을 구분해보자.
+
+- 시스템 예외
+  - 네트워크 에러 와 같은 예외상황이 발생하는 경우를 의미한다.
+- 비즈니스 예외
+  - ex) 주문시 잔고 부족 -> 주문데이터 저장 & 결재 상태 대기 처리
+  - 주문이 실패하더라도 결재 상태를 대기처리하고, 다시 주문하게끔 하는 것이 나은 경우를 예로 들수 있다.
+
+<br>
+
+## UnCheckedException, CheckedException
 
 JAVA의 Exception 은 아래의 두가지 종류가 있다.
 
@@ -533,29 +528,9 @@ JAVA의 Exception 은 아래의 두가지 종류가 있다.
 
 <br>
 
-## 시스템 예외, 비즈니스 예외
+## 예외처리 기준
 
-여러가지 기준이 있을 수 있겠지만, 시스템예외, 비즈니스 예외라는 프레임으로 예외들을 구분해보자.
-
-- 시스템 예외
-  - 네트워크 에러 와 같은 예외상황이 발생하는 경우를 의미한다.
-- 비즈니스 예외
-  - 예를 들면 주문시에 잔고가 부족해 결제에 실패하면 주문 데이터를 저장하고 결제 상태를 대기 상태로 표시하는 경우가 있다.
-  - 이 경우 고객에게는 잔고 부족을 알리고, 결제를 다시 하도록 안내하는 등의 화면을 표시하고 알림 메일을 발송한다.
-
-<br>
-
-직접 트랜잭션 관련 코드를 유지보수하는 것이 아닌, 처음부터 개발을 시작할 경우 예외 코드를 작성할 때 
-
-- 비즈니스 예외는 체크예외로 처리하는게 맞을까? 
-- 시스템 예외는 언체크 예외로 두어 처리해야 할까? 
-- 어떤 규칙으로 처리하는게 맞을까? 
-
-이런 궁금증에 직면하게 될 것 같다.
-
-<br>
-
-이 경우 보통 아래의 기준으로 적용하게 된다.(물론 예외 케이스도 있을수 있다.)<br>
+비즈니스 예외는 체크 예외로 처리하는게 맞을까? 시스템 예외는 언체크 예외로 두어 처리하는게 맞을까?<br>
 
 <br>
 
@@ -566,17 +541,13 @@ JAVA의 Exception 은 아래의 두가지 종류가 있다.
 - 비즈니스 적으로 예외가 발생한 것은 Checked 되어야 한다는 의미인것 같다.
 - 비즈니스 적으로 예외가 발생하는 것은 어떤 상태에서 어떤 이유로 예외가 발생되었는지 기록이 되어야 하기에 예외가 발생하더라도 커밋이 되는 Checked Exception 을 사용한다. (=체크를 한다는 의미)
 
+<br>
+
 시스템 예외
 
 - 복구할 수 없는 예외는 커밋이 되어야 하지 말아야 한다.
-- 예를 들면 네트워크 유실 등의 예외가 발생하면, 커밋이 발생하지 않는다.
 - 언체크드 예외로 취급한다.
-
-<br>
-
-오늘은 이 부분들에 대해 알아보기 위해 테스트 코드를 기반으로 해당 내용들을 확인해본다.<br>
-
-강사님은 테스트 코드까지 직접 작성할 수 있도록 떠먹여주시고 계신다. 실제 강의를 볼 수 있다면 꼭 보는 것을 추천.<br>
+- 예를 들면 네트워크 유실 등의 예외가 발생하면, 커밋이 발생하지 않는다.
 
 <br>
 
@@ -599,7 +570,49 @@ JAVA의 Exception 은 아래의 두가지 종류가 있다.
 
 <br>
 
-## 테스트 시작) 로깅을 위해 적용하는 jpa 옵션
+## 예외 번역
+
+> [예외 번역] 에 정리하는 내용은 단순히 내 생각이다.
+
+데이터(기술) 계층에서는 예외가 발생하더라도 현재 상태를 롤백시키지 않고 저장해야 하는 경우가 분명히 존재한다. <br>
+
+> ex) 주문시 잔고 부족 -> 주문데이터 저장 & 결재 상태 대기 처리
+
+이 경우 @Transactional 에 의한 처리시, 위의 상황에서 체크드 예외를 사용한다면, 롤백이 일어나지 않고 현재 상태 및 다음 상태를 위한 데이터 처리가 가능하다.<br>
+
+**체크드 익셉션(Checked Exception)의 단점**<br>
+
+하지만, 가급적이면 체크드 익셉션은 자주 사용되면 안된다. Java8 에서부터 스트림 안에서 체크드 익셉션 메서드는 사용할 수 없고, 체크드 익셉션 하나를 처리하기 위한 메서드를 처리하기 위한 상위단의 메서드들을 오염시킨다는 점에서 체크드 익셉션은 좋지 않은 방식이다.([Item 71. 필요없는 검사예외 사용은 피하라](https://github.com/soon-good/study-effective-java-3rd/blob/develop/ITEM-71-%ED%95%84%EC%9A%94%EC%97%86%EB%8A%94-%EA%B2%80%EC%82%AC-%EC%98%88%EC%99%B8-%EC%82%AC%EC%9A%A9%EC%9D%80-%ED%94%BC%ED%95%98%EB%9D%BC.md))<br>
+
+<br>
+
+**예외번역**<br>
+
+여기에 대한 해결책은 예외번역을 사용하는 것이다. ([Item 73. 추상화 수준에 맞는 예외를 던지라](https://github.com/soon-good/study-effective-java-3rd/blob/develop/ITEM-73-%EC%B6%94%EC%83%81%ED%99%94-%EC%88%98%EC%A4%80%EC%97%90-%EB%A7%9E%EB%8A%94-%EC%98%88%EC%99%B8%EB%A5%BC-%EB%8D%98%EC%A7%80%EB%9D%BC.md)) 예를 들면 아래와 같은 방식이다.
+
+```java
+public abstract class AbstractSequentialList<E> extends AbstractList<E> {
+    // ...
+    public E get(int index) {
+        try {
+            return listIterator(index).next();
+        } catch (NoSuchElementException exc) {
+            throw new IndexOutOfBoundsException("Index: "+index);
+        }
+    }
+    // ...
+}
+```
+
+<br>
+
+애플리케이션에서 데이터(=기술)계층의 메서드를 호출할때, 데이터(=기술)계층에서 체크드 예외(CheckedException)를 발생시켜야 한다면, 가급적 예외를 번역해서 언체크드 예외(Unchecked Exception)로 번역하는 방식으로 예외를 내보내는 것이 가급적 좋은 코딩관례일듯 하다.<br>
+
+<br>
+
+## 테스트로 검증
+
+### 로깅을 위해 적용하는 jpa 옵션
 
 - 아래에서부터는 가급적이면 직접 테스트코드를 작성해봐야 한다. 
 
@@ -607,7 +620,7 @@ JAVA의 Exception 은 아래의 두가지 종류가 있다.
 
 `application.properties`
 
-```jsx
+```plain
 logging.level.org.springframework.transaction.interceptor=TRACE
 logging.level.org.springframework.jdbc.datasource.DataSourceTransactionManager=DEBUG
 
@@ -618,10 +631,6 @@ logging.level.org.hibernate.resource.transaction=DEBUG
 # SQL
 logging.level.org.hibernate.SQL=DEBUG
 ```
-
-<br>
-
-그냥 문자만 멍하니 보다가 복붙하면, 각각의 속성을 왜 붙였는지 이유를 궁금해지지 않는다. 이 말을 적어두는 이유는, 나 역시도 제일 처음 프린트를 읽으면서 스터디를 할때 이 부분에 대해서 너무나 스무스하게 지나쳤었다. 아무 생각없이 글자만 읽고 지나쳤었다.<br>
 
 <br>
 
@@ -642,7 +651,7 @@ logging.level.org.hibernate.SQL=DEBUG
 
 <br>
 
-## 예제 1) 언체크드 예외(Unchecked Exception) 의 커밋/롤백 확인 예제
+### 예제 1) 언체크드 예외 (Unchecked Exception) 의 커밋/롤백 확인 예제
 
 ```java
 @SpringBootTest
@@ -692,7 +701,7 @@ Rolling back JPA transaction on EntityManager
 
 <br>
 
-## 예제 2) 체크드(Checked) 예외의 커밋/롤백 확인 예제
+### 예제 2) 체크드 (Checked) 예외의 커밋/롤백 확인 예제
 
 ```java
 @SpringBootTest
@@ -741,9 +750,9 @@ Committing JPA transaction on EntityManager
 
 <br>
 
-## 예제3) 체크드 예외여도 rollbackFor에 예외를 지정하면 롤백되는지 확인
+### 예제 3) 체크드(Checked) 예외여도 rollbackFor에 예외를 지정하면 롤백되는지 확인
 
-```jsx
+```java
 @SpringBootTest
 public class RollbackTest3{
 
@@ -783,7 +792,7 @@ public class RollbackTest3{
 
 예제를 실행한 결과는 아래와 같다. 롤백을 잘 수행하는 것을 볼 수 있다.
 
-```jsx
+```plain
 ...
 rollbackForMethod 메서드 호출
 ...
@@ -793,7 +802,7 @@ Rolling back JPA transaction on EntityManager
 
 <br>
 
-## 예제4) 비즈니스 예외
+### 예제 4) 비즈니스 예외
 
 도서 정보를 저장하는 메서드인 `saveBook(Book book)` 메서드를 등록하는 테스트를 통해서 비즈니스 예외를 정의하고 어떻게 처리 되는지 확인해보기 위한 예제다.<br>
 
@@ -801,7 +810,7 @@ Rolling back JPA transaction on EntityManager
 
 **체크드 익셉션 정의**
 
-```jsx
+```java
 public class NoPriceInformationException extends Exception {
 	public NoPriceInformationException(String message){
 		super(message);
@@ -813,7 +822,7 @@ public class NoPriceInformationException extends Exception {
 
 **BookRegisterService**
 
-```jsx
+```java
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -848,7 +857,7 @@ public class BookRegisterService{
 
 **BookServiceTest**
 
-```jsx
+```java
 @Slf4j
 @SpringBootTest
 public class BookServiceTest{
@@ -891,5 +900,15 @@ public class BookServiceTest{
 	}
 }
 ```
+
+<br>
+
+## 잔여 작업
+
+내일 부터는 예제정리를 시작할 듯하다. 그리고 예외 전파 문서도 조금씩 읽으면서 요약을 시작하게 될듯.<br>
+
+@Transactional 어노테이션의 각 옵션들에 대해서 이 문서에 정리할까 했는데, 다른 문서로 분리하기로 했다.<br>
+
+지금 이 문서도 글이 너무 길어서 관리가 안되기에 다른 문서로 분리 후에 링크로 대체할 예정이다.<br>
 
 <br>
