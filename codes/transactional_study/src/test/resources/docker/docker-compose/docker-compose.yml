@@ -1,0 +1,22 @@
+version: '3'
+services:
+  postgres-for-test:
+    image: postgres
+    restart: always
+    #    container_name: postres
+    environment:
+      POSTGRES_USER: "${DB_USER_ID}"
+      POSTGRES_PASSWORD: "${DB_USER_PASSWORD}"
+      POSTGRES_DB: postgres
+      TZ: Etc/UTC
+    volumes:
+      - ./init/:/docker-entrypoint-initdb.d/
+    ports:
+      - 15432:5432
+
+  adminer:
+    image: adminer
+    restart: always
+    #    container_name: waiker-postgres-test
+    ports:
+      - 5555:8080
