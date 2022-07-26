@@ -576,6 +576,8 @@ JAVA의 Exception 은 아래의 두가지 종류가 있다.
 
 > ex) 주문시 잔고 부족 -> 주문데이터 저장 & 결재 상태 대기 처리
 
+<br>
+
 이 경우 @Transactional 에 의한 처리시, 위의 상황에서 체크드 예외를 사용한다면, 롤백이 일어나지 않고 현재 상태 및 다음 상태를 위한 데이터 처리가 가능하다.<br>
 
 <br>
@@ -705,40 +707,40 @@ Rolling back JPA transaction on EntityManager
 
 ```java
 @SpringBootTest
-public class RollbackTest2{
+public class BookServiceCheckedExceptionTest1 {
 
-	@Autowired
-	BookService bookService;
+    @Autowired
+    BookService bookService;
 
-	@Test
-	public void 체크드_예외_테스트(){
-		assertThatThrownBy(() -> bookService.throwCheckedException())
-			.isInstanceOf(Exception.class);
-	}
+    @Test
+    public void 체크드_예외_메서드_호출시_커밋되는지_테스트(){
+        Assertions.assertThatThrownBy(()->bookService.throwCheckedException())
+                .isInstanceOf(Exception.class);
+    }
 
-	@TestConfiguration
-	static class InlineConfiguration(
 
-		@Bean
-		BookService bookService(){
-			return new BookService();
-		}
-	}
+    @TestConfiguration
+    static class InlineConfiguration{
+        @Bean
+        BookService bookService(){
+            return new BookService();
+        }
+    }
 
-	@Slf4j
-	static class BookService{
-		@Transactional
-		public void throwCheckedException(){
-			log.info("체크드 예외 호출");
-			throw new Exception();
-		}
-	}
+    @Slf4j
+    static class BookService{
+        @Transactional
+        public void throwCheckedException() throws Exception{
+            log.info("체크드 예외 호출");
+            throw new Exception();
+        }
+    }
 }
 ```
 
 <br>
 
-위의 예제를 실행하는 결과는 아래와 같다. "체크드\_예외\_테스트" 라고 적힌 테스트 케이스를 실행하는 결과는 아래와 같다. 체크드 예외가 발생할 때에는 커밋이 그대로 수행되는 것을 확인할 수 있다.
+위의 예제를 실행하는 결과는 아래와 같다. **"체크드\_예외\_메서드_호출시\_커밋되는지\_테스트"** 라고 적힌 테스트 케이스를 실행하는 결과는 아래와 같다. 체크드 예외가 발생할 때에는 커밋이 그대로 수행되는 것을 확인할 수 있다.
 
 ```java
 ...
@@ -747,6 +749,12 @@ public class RollbackTest2{
 Initiating transaction commit
 Committing JPA transaction on EntityManager
 ```
+
+<br>
+
+(2022.07.27) 텍스트로보는 것보다 실제 스크린샷을 보는게 훨씬 이해가 잘 될수도 있겠다 싶어서 스크린샷을 추가함
+
+![1](./img/TRANSACTIONAL_EXAMPLES/1.png)
 
 <br>
 
@@ -907,17 +915,5 @@ public class BookServiceTest{
 
 - [여기](https://github.com/soon-good/study-querydsl-jpa/blob/develop/%ED%8A%B8%EB%9E%9C%EC%9E%AD%EC%85%98%20%EA%B0%9C%EB%85%90%EC%A0%95%EB%A6%AC/Transactional%20%EC%9D%98%20%EA%B0%81%20%EC%98%B5%EC%85%98%EB%93%A4.md) 에 정리해둔 내용으로 대체
 
-<br>
 
-## 잔여 작업
-
-내일 부터는 커밋 롤백 예제정리를 다시!!! 시작할 듯하다. 그리고 예외 전파 문서도 조금씩 읽으면서 요약을 시작하게 될듯.<br>
-
-지금 이 문서도 글이 너무 길어서 관리가 안되기에 다른 문서로 분리 후에 링크로 대체할 예정이다.<br>
-
-가끔은 이렇게 노력해서 정리해둔 내용을 전직장 사람들이 아무 노력도 들이지 않고 그냥 읽기만 하는 체리피킹이 될까봐 무섭기도 하고 좀 기분이 언짢을 때가 많다. 어떻게 그 사람들은 그렇게까지 노력 없이 거지근성으로 사는지 당최 이해가 도저히 안간다.<br>
-
-갓 30대 넘은 사람들이 팀장/실장/랩장 이런 직책을 달고 노력안하고 가만히 앉아서 다른 사람 시킬 생각만 하면서 자기 자신을 못돌아보는 것도 한심하다는 생각이 제일 컸다. 다른 회사에서 그 정도 일을 하는 사람들이 단순한 노력으로만 일하지 않는것도 봤었고, 애초에 스펙 자체도 넘사벽이었던걸로 기억이 하는데... 어떻게 그렇게 우물안 개구리였을까 그사람들은.. 하고 잠깐 생각이 들었다<br>
-
-<br>
 
