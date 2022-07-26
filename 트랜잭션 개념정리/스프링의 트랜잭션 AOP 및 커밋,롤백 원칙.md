@@ -1,5 +1,11 @@
 # 스프링의 트랜잭션 프록시, 커밋,롤백 원칙
 
+# 예제 깃헙
+
+- 예제는 [여기 - github.com/study-querydsl-jpa/codes/transactional_study/src/test/java/io/study/transactional_study](https://github.com/soon-good/study-querydsl-jpa/tree/develop/codes/transactional_study/src/test/java/io/study/transactional_study/commit_rollback) 에 정리해두었다.
+
+
+
 # 참고자료
 
 - [스프링 DB 2편 - 데이터 접근 활용 기술 - 인프런 | 강의](https://www.inflearn.com/course/%EC%8A%A4%ED%94%84%EB%A7%81-db-2)
@@ -657,35 +663,33 @@ logging.level.org.hibernate.SQL=DEBUG
 
 ```java
 @SpringBootTest
-public class RollbackTest1{
+public class BookServiceUncheckedExceptionTest1 {
 
-	@Autowired
-	BookService bookService;
+    @Autowired
+    BookService bookService;
 
-    // 
-	@Test
-	public void 언체크드_예외_테스트(){
-		assertThatThrownBy(() -> bookService.throwUncheckedException())
-			.isInstanceOf(RuntimeException.class);
-	}
+    @Test
+    public void 언체크드_예외_발생시_트랜잭션은_롤백된다(){
+        Assertions.assertThatThrownBy(() -> bookService.throwUncheckedException())
+                .isInstanceOf(RuntimeException.class);
+    }
 
-	@TestConfiguration
-	static class InlineConfiguration(
+    @TestConfiguration
+    static class InlineConfiguration{
+        @Bean
+        BookService bookService(){
+            return new BookService();
+        }
+    }
 
-		@Bean
-		BookService bookService(){
-			return new BookService();
-		}
-	}
-
-	@Slf4j
-	static class BookService{
-		@Transactional
-		public void throwUncheckedException(){
-			log.info("런타임 예외 호출");
-			throw new RuntimeException();
-		}
-	}
+    @Slf4j
+    static class BookService{
+        @Transactional
+        public void throwUncheckedException(){
+            log.info("언체크드 익셉션(RuntimeException) throw 하겠음");
+            throw new RuntimeException();
+        }
+    }
 }
 ```
 
@@ -694,14 +698,24 @@ public class RollbackTest1{
 위의 예제에서 "언체크드\_예외\_테스트" 라고 적힌 테스트 케이스를 실행하는 결과는 아래와 같다. bookService 객체의 `throwUncheckedException()` 메서드를 호출하면, 롤백을 수행하는 것을 로그를 통해 확인할 수 있다.
 
 ```plain
-...
-런타임 예외 호출
-...
+언체크드 익셉션(RuntimeException) throw 하겠음
+
+// ...
+
 Initiating transaction rollback
-Rolling back JPA transaction on EntityManager
+Rolling back JPA transaction on EntityManager [SessionImpl(1683071624<open>)]
+Closing JPA EntityManager [SessionImpl(1683071624<open>)] after transaction
+
+// ...
 ```
 
 <br>
+
+(2022.07.27) 스크린샷을 보면 훨씬 직관적으로 경험적으로 이해하기 쉬울것 같아 스샷을 추가했다.<br>
+
+![1](./img/TRANSACTIONAL_EXAMPLES/2.png)
+
+
 
 ### 예제 2) 체크드 (Checked) 예외의 커밋/롤백 확인 예제
 
@@ -762,37 +776,37 @@ Committing JPA transaction on EntityManager
 
 ```java
 @SpringBootTest
-public class RollbackTest3{
+public class BookServiceCheckedExceptionRollbackOnTest1 {
 
-	@Autowired
-	BookService bookService;
+    @Autowired
+    BookService bookService;
 
-	@Test
-	public void 롤백_테스트(){
-		assertThatThrownBy(() -> bookService.rollbackForMethod())
-			.isInstanceOf(JustException.class);
-	}
+    @Test
+    public void 체크드_예외_메서드_호출시_rollbackOn에_등록한_타입에_대해서는_체크드예외_이더라도_트랜잭션_롤백을_해야한다(){
+        Assertions.assertThatThrownBy(() -> bookService.rollbackOnMethod())
+                .isInstanceOf(JustException.class);
+    }
 
-	@TestConfiguration
-	static class InlineConfiguration(
+    @TestConfiguration
+    static class InlineConfiguration{
+        @Bean
+        public BookService bookService(){
+            return new BookService();
+        }
+    }
 
-		@Bean
-		BookService bookService(){
-			return new BookService();
-		}
-	}
+    static class JustException extends Exception{
 
-	static class JustException extends Exception{
-	}
+    }
 
-	@Slf4j
-	static class BookService{
-		@Transactional(rollbackFor = JustException.class)
-		public void rollbackForMethod(){
-			log.info("rollbackForMethod 메서드 호출");
-			throw new Exception();
-		}
-	}
+    @Slf4j
+    static class BookService{
+        @Transactional(rollbackOn = JustException.class)
+        public void rollbackOnMethod() throws Exception{
+            log.info("rollbackOnMethod 메서드 호출");
+            throw new JustException();
+        }
+    }
 }
 ```
 
@@ -800,17 +814,12 @@ public class RollbackTest3{
 
 예제를 실행한 결과는 아래와 같다. 롤백을 잘 수행하는 것을 볼 수 있다.
 
-```plain
-...
-rollbackForMethod 메서드 호출
-...
-Initiating transaction rollback
-Rolling back JPA transaction on EntityManager
-```
-
+![1](./img/TRANSACTIONAL_EXAMPLES/3.png)
 <br>
 
 ### 예제 4) 비즈니스 예외
+
+> 이건 이따가 오후에... 시간 오바됐음 ㄷㄷㄷ
 
 도서 정보를 저장하는 메서드인 `saveBook(Book book)` 메서드를 등록하는 테스트를 통해서 비즈니스 예외를 정의하고 어떻게 처리 되는지 확인해보기 위한 예제다.<br>
 
