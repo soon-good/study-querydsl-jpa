@@ -578,7 +578,7 @@ JAVA의 Exception 은 아래의 두가지 종류가 있다.
 
 ## 예외 번역
 
-데이터(기술) 계층에서는 예외가 발생하더라도 현재 상태를 롤백시키지 않고 저장해야 하는 경우가 분명히 존재한다. <br>
+데이터(기술) 계층에서는 예외가 발생하더라도 현재 상태를 롤백시키지 않고 트랜잭션을 커밋해야 하는 경우가 분명히 존재한다. <br>
 
 > ex) 주문시 잔고 부족 -> 주문데이터 저장 & 결재 상태 대기 처리
 
@@ -596,25 +596,32 @@ JAVA의 Exception 은 아래의 두가지 종류가 있다.
 
 **예외번역**<br>
 
-여기에 대한 해결책은 예외번역을 사용하는 것이다. ([Item 73. 추상화 수준에 맞는 예외를 던지라](https://github.com/soon-good/study-effective-java-3rd/blob/develop/ITEM-73-%EC%B6%94%EC%83%81%ED%99%94-%EC%88%98%EC%A4%80%EC%97%90-%EB%A7%9E%EB%8A%94-%EC%98%88%EC%99%B8%EB%A5%BC-%EB%8D%98%EC%A7%80%EB%9D%BC.md)) 예를 들면 아래와 같은 방식이다.
+이런 이유로 예외번역이라는 것을 사용한다. 기술적인 개념은 아니고 코딩관례와 같은 개념이다. 예외 번역(Exception Translation)시 예외 연쇄(Exception Chaining)을 함께 적용해주면, 원인과 목적이 분명한 예외타입이 되는 좋은 사례가 된다.<br>
+
+애플리케이션 계층에서 데이터(=기술)계층의 메서드를 호출할 때, 데이터(=기술)계층에서 체크드 예외(CheckedException)가 발생한다면, 가급적 예외를 언체크드 예외로 번역해서 예외를 내보내는 것이 좋은 코딩관례일 듯 하다.
+
+> 예외 번역(Exception Translation)은 이펙티브 자바 Item 73 에서 설명하고 있는 개념이다. 해당 개념은 [Item 73. 추상화 수준에 맞는 예외를 던지라](https://github.com/soon-good/study-effective-java-3rd/blob/develop/ITEM-73-%EC%B6%94%EC%83%81%ED%99%94-%EC%88%98%EC%A4%80%EC%97%90-%EB%A7%9E%EB%8A%94-%EC%98%88%EC%99%B8%EB%A5%BC-%EB%8D%98%EC%A7%80%EB%9D%BC.md) 에서 정리해둔 글이 있다.<br>
+>
+> 예외 연쇄란, 발생한 Exception 객체와 에러 원인을 분명히해서 상위 예외의 생성자에 전달해서 예외의 원인과 증상을 정확하게 전달하는 것을 의미한다.<br>
+
+<br>
+
+아래와 같은 코드를 예로 들어보자. 여기서 사용한 `MyUncheckedException` 클래스는 `IllegalArgumentException` 클래스를 상속한 언체크드 익셉션이다.<br>
 
 ```java
-public abstract class AbstractSequentialList<E> extends AbstractList<E> {
-    // ...
-    public E get(int index) {
-        try {
-            return listIterator(index).next();
-        } catch (NoSuchElementException exc) {
-            throw new IndexOutOfBoundsException("Index: "+index);
-        }
+@Transactional(dontRollbackOn = MyUncheckedException.class)
+public void exceptionTranslationWithCommit(){
+    try{
+        throw new Exception();
+    } catch(Exception e){
+        throw new MyUncheckedException(BookPaymentErrorCode.NOT_ENOUGH_MONEY, e);
     }
-    // ...
 }
 ```
 
 <br>
 
-애플리케이션에서 데이터(=기술)계층의 메서드를 호출할때, 데이터(=기술)계층에서 체크드 예외(CheckedException)를 발생시켜야 한다면, 가급적 예외를 번역해서 언체크드 예외(Unchecked Exception)로 번역하는 방식으로 예외를 내보내는 것이 가급적 좋은 코딩관례일듯 하다.<br>
+자세한 전체 예제는 이글의 하단부에 정리해두었다.<br>
 
 <br>
 
@@ -917,6 +924,186 @@ public class BookServiceTest{
 	}
 }
 ```
+
+<br>
+
+### 예제 5) 체크드 예외 번역을 통해 언체크드 예외로 변환을 한다
+
+- 다만 이 경우는 체크드 예외가 언체크드 예외로 번역되기 때문에, 롤백이 된다.
+- 만약 롤백되면 안되는 트랜잭션일 경우 아래 예제 6)을 참고
+
+```java
+package io.study.transactional_study.commit_rollback.exception_translation;
+
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+
+import javax.transaction.Transactional;
+
+@SpringBootTest
+public class BookRepositoryExceptionTranslationTest1 {
+
+    @Autowired
+    BookRepository bookRepository;
+
+    @Test
+    public void 예외번역_테스트2_체크드예외를_언체크드예외로_번역하고_언체크드_예외로_번역되므로_rollback이_발생한다(){
+        Assertions.assertThatThrownBy(()->bookRepository.exceptionTranslationWithRollback_WithAllException())
+                .isInstanceOf(MyUncheckedException.class);
+    }
+
+
+    @TestConfiguration
+    static class InlineConfiguration{
+        @Bean
+        BookRepository bookService(){
+            return new BookRepository();
+        }
+    }
+
+    @Slf4j
+    static class BookRepository {
+        // Unchecked, Checked 익셉션에 상관없이 롤백을 진행
+        @Transactional
+        public void exceptionTranslationWithRollback_WithAllException(){
+            try{
+                throw new Exception();
+            } catch(Exception e){
+                throw new MyUncheckedException(BookPaymentErrorCode.NOT_ENOUGH_MONEY, e);
+            }
+        }
+    }
+
+    static class MyUncheckedException extends IllegalArgumentException{
+        public MyUncheckedException(){}
+
+        public MyUncheckedException(BookPaymentErrorCode errorCode){
+            super(errorCode.getMessage());
+        }
+
+        public MyUncheckedException(BookPaymentErrorCode errorCode, Throwable cause){
+            super(errorCode.getMessage(), cause);
+        }
+
+        public MyUncheckedException(Throwable cause){
+            super(cause);
+        }
+    }
+
+    @Getter
+    enum BookPaymentErrorCode{
+        NOT_ENOUGH_MONEY("잔고부족");
+
+        private final String message;
+
+        BookPaymentErrorCode(String message){
+            this.message = message;
+        }
+    }
+}
+
+```
+
+<br>
+
+트랜잭션을 롤백하는 것을 아래의 실행결과를 통해 확인할 수 있다. 자세한 설명은 스샷으로 대체하겠음
+
+![1](./img/TRANSACTIONAL_EXAMPLES/4.png)
+
+<br>
+
+### 예제 6) 체크드 예외 번역을 통해 언체크드 예외로 변환하되, 커밋되지 않도록 한다.
+
+```java
+package io.study.transactional_study.commit_rollback.exception_translation;
+
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+
+import javax.transaction.Transactional;
+
+@SpringBootTest
+public class BookRepositoryExceptionTranslationTest1 {
+
+    @Autowired
+    BookRepository bookRepository;
+
+    @Test
+    public void 예외번역_테스트1_체크드예외를_언체크드예외로_번역하더라도_커밋이_필요하면_dontRollbackOn을_사용한다(){
+        Assertions.assertThatThrownBy(()->bookRepository.exceptionTranslationWithCommit())
+                .isInstanceOf(MyUncheckedException.class);
+    }
+
+	// ... 
+
+    @TestConfiguration
+    static class InlineConfiguration{
+        @Bean
+        BookRepository bookService(){
+            return new BookRepository();
+        }
+    }
+
+    @Slf4j
+    static class BookRepository {
+        @Transactional(dontRollbackOn = MyUncheckedException.class)
+        public void exceptionTranslationWithCommit(){
+            try{
+                throw new Exception();
+            } catch(Exception e){
+                throw new MyUncheckedException(BookPaymentErrorCode.NOT_ENOUGH_MONEY, e);
+            }
+        }
+
+    }
+
+    static class MyUncheckedException extends IllegalArgumentException{
+        public MyUncheckedException(){}
+
+        public MyUncheckedException(BookPaymentErrorCode errorCode){
+            super(errorCode.getMessage());
+        }
+
+        public MyUncheckedException(BookPaymentErrorCode errorCode, Throwable cause){
+            super(errorCode.getMessage(), cause);
+        }
+
+        public MyUncheckedException(Throwable cause){
+            super(cause);
+        }
+    }
+
+    @Getter
+    enum BookPaymentErrorCode{
+        NOT_ENOUGH_MONEY("잔고부족");
+
+        private final String message;
+
+        BookPaymentErrorCode(String message){
+            this.message = message;
+        }
+    }
+}
+
+```
+
+<br>
+
+트랜잭션을 롤백하지 않고, 커밋하는 것을 아래의 캡처를 통해 확인할 수 있다. 자세한 내용은 스샷으로 대체함<br>
+
+![1](./img/TRANSACTIONAL_EXAMPLES/5.png)
 
 <br>
 
