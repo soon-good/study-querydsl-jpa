@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Bean;
 import javax.transaction.Transactional;
 
 @SpringBootTest
-public class BookServiceCheckedExceptionTest1 {
+public class BookRepositoryCheckedExceptionTest1 {
 
     @Autowired
     BookService bookService;
