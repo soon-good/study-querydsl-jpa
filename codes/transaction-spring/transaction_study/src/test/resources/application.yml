@@ -8,11 +8,19 @@ spring:
     username: postgres
     password: 1111
     url: jdbc:postgresql://localhost:15432/postgres
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      format_sql: true
+      show_sql: true
+#logging:
+#  level:
+#    org.hibernate.SQL:info
 # #  'script' must not be null or empty (테스트 스키마 적용전 아래 주석 해제)
 #  sql:
 #    init:
 #      schema-locations:
 #        - classpath:docker/sql/schema.sql
 #      mode: always
-
 
